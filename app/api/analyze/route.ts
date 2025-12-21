@@ -3,6 +3,18 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
+// Vercel serverless function config - increase body size limit
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '10mb',
+        },
+    },
+};
+
+// Next.js App Router config
+export const maxDuration = 60; // seconds
+
 interface Correction {
     question: string;
     options: string[];
@@ -39,7 +51,18 @@ function buildFewShotExamples(corrections: Correction[]): string {
 
 export async function POST(request: Request) {
     try {
-        const { image } = await request.json();
+        let body;
+        try {
+            body = await request.json();
+        } catch (parseError) {
+            console.error("Request body parse error:", parseError);
+            return NextResponse.json(
+                { error: "Invalid request body. Please try with a smaller image." },
+                { status: 400 }
+            );
+        }
+
+        const { image } = body;
 
         if (!image) {
             return NextResponse.json(
