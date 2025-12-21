@@ -20,7 +20,7 @@ interface AnalysisResult {
 
 interface CorrectionState {
   [questionIndex: number]: {
-    selectedAnswer: string;
+    selectedAnswers: string[];
     editedExplanation: string;
     isEditing: boolean;
     isSaved: boolean;
@@ -43,25 +43,38 @@ export default function Home() {
 
   const handleOptionClick = (questionIndex: number, option: string) => {
     if (!corrections[questionIndex]?.isEditing) return;
-    setCorrections(prev => ({
-      ...prev,
-      [questionIndex]: {
-        ...prev[questionIndex],
-        selectedAnswer: option,
-      }
-    }));
+    setCorrections(prev => {
+      const currentAnswers = prev[questionIndex]?.selectedAnswers || [];
+      const isSelected = currentAnswers.includes(option);
+      const newAnswers = isSelected
+        ? currentAnswers.filter(a => a !== option)
+        : [...currentAnswers, option];
+      return {
+        ...prev,
+        [questionIndex]: {
+          ...prev[questionIndex],
+          selectedAnswers: newAnswers,
+        }
+      };
+    });
   };
 
   const toggleEdit = (questionIndex: number, question: Question) => {
-    setCorrections(prev => ({
-      ...prev,
-      [questionIndex]: {
-        selectedAnswer: prev[questionIndex]?.selectedAnswer || question.correctAnswer,
-        editedExplanation: prev[questionIndex]?.editedExplanation || question.explanation,
-        isEditing: !prev[questionIndex]?.isEditing,
-        isSaved: false,
-      }
-    }));
+    setCorrections(prev => {
+      const existingAnswers = prev[questionIndex]?.selectedAnswers;
+      const defaultAnswers = Array.isArray(question.correctAnswer)
+        ? question.correctAnswer
+        : [question.correctAnswer];
+      return {
+        ...prev,
+        [questionIndex]: {
+          selectedAnswers: existingAnswers || defaultAnswers,
+          editedExplanation: prev[questionIndex]?.editedExplanation || question.explanation,
+          isEditing: !prev[questionIndex]?.isEditing,
+          isSaved: false,
+        }
+      };
+    });
   };
 
   const handleExplanationChange = (questionIndex: number, value: string) => {
@@ -77,7 +90,7 @@ export default function Home() {
 
   const submitCorrection = async (questionIndex: number, question: Question) => {
     const correction = corrections[questionIndex];
-    if (!correction?.selectedAnswer) return;
+    if (!correction?.selectedAnswers || correction.selectedAnswers.length === 0) return;
 
     try {
       const response = await fetch('/api/corrections', {
@@ -87,7 +100,7 @@ export default function Home() {
           question: question.question,
           options: question.options,
           aiAnswer: question.correctAnswer,
-          userCorrectAnswer: correction.selectedAnswer,
+          userCorrectAnswer: correction.selectedAnswers,
           aiExplanation: question.explanation,
           userExplanation: correction.editedExplanation,
         }),
@@ -317,7 +330,7 @@ export default function Home() {
                       {(q.options || []).map((option: string, index: number) => {
                         // Check if in correction mode
                         const isEditing = corrections[qIndex]?.isEditing;
-                        const userSelected = corrections[qIndex]?.selectedAnswer;
+                        const userSelectedAnswers = corrections[qIndex]?.selectedAnswers || [];
 
                         // Handle multiple correct answers (string or array)
                         const rawAnswer = q.correctAnswer || '';
@@ -333,9 +346,9 @@ export default function Home() {
                         // Determine highlight state
                         let isHighlighted = false;
                         if (isEditing) {
-                          isHighlighted = option === userSelected;
+                          isHighlighted = userSelectedAnswers.includes(option);
                         } else if (corrections[qIndex]?.isSaved) {
-                          isHighlighted = option === corrections[qIndex]?.selectedAnswer;
+                          isHighlighted = (corrections[qIndex]?.selectedAnswers || []).includes(option);
                         } else {
                           isHighlighted = isAICorrect;
                         }
