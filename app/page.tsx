@@ -108,6 +108,43 @@ export default function Home() {
     }
   };
 
+  // Image compression function to reduce file size for Vercel's 4.5MB limit
+  const compressImage = (file: File, maxWidth: number = 1024, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        let { width, height } = img;
+
+        // Scale down if larger than maxWidth
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Convert to base64 with compression
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+
+      // Read file as data URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleAnalyze = async () => {
     if (!file) return;
 
@@ -115,42 +152,32 @@ export default function Home() {
     setError(null);
 
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
+      // Compress image before sending to avoid Vercel's 4.5MB limit
+      const base64String = await compressImage(file, 1024, 0.7);
+      console.log('Compressed image size:', Math.round(base64String.length / 1024), 'KB');
 
-        try {
-          const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ image: base64String }),
-          });
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ image: base64String }),
+        });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to analyze image');
-          }
-
-          const data = await response.json();
-          setResult(data);
-        } catch (err) {
-          console.error(err);
-          setError(err instanceof Error ? err.message : 'Something went wrong');
-        } finally {
-          setAnalyzing(false);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to analyze image');
         }
-      };
 
-      reader.onerror = () => {
-        setError("Failed to read file");
+        const data = await response.json();
+        setResult(data);
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      } finally {
         setAnalyzing(false);
       }
-
-      reader.readAsDataURL(file);
-
     } catch (err) {
       console.error(err);
       setError("An unexpected error occurred");
