@@ -212,7 +212,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg sm:text-x text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-              Upload your past exam questions (PDF or Image) and get instant, accurate answers with detailed explanations powered by advanced AI.
+              過去問の画像をアップロードすると、AIが即座に正確な解答と詳しい解説を提供します。※1問ずつアップロードしてください。
             </p>
           </div>
         </div>
