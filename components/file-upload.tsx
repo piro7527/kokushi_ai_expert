@@ -98,7 +98,7 @@ export function FileUpload({ onFileSelect, isLoading = false }: FileUploadProps)
                             ref={inputRef}
                             type="file"
                             className="hidden"
-                            accept="image/jpeg,image/png,image/gif,image/webp,image/tiff"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
                             onChange={handleChange}
                         />
 
@@ -118,7 +118,7 @@ export function FileUpload({ onFileSelect, isLoading = false }: FileUploadProps)
                                 </p>
                             </div>
                             <p className="text-xs text-zinc-500">
-                                画像のみ対応（JPG, PNG, GIF, WebP, TIFF）
+                                画像のみ対応（JPG, PNG, GIF, WebP）
                             </p>
                             <Button
                                 onClick={onButtonClick}
