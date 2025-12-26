@@ -62,9 +62,25 @@ export default function Home() {
   const toggleEdit = (questionIndex: number, question: Question) => {
     setCorrections(prev => {
       const existingAnswers = prev[questionIndex]?.selectedAnswers;
-      const defaultAnswers = Array.isArray(question.correctAnswer)
-        ? question.correctAnswer
-        : [question.correctAnswer];
+
+      // Better initialization logic matching the rendering logic
+      let defaultAnswers: string[] = [];
+      if (!existingAnswers) {
+        const rawAnswer = question.correctAnswer || '';
+        const correctAnswers = Array.isArray(rawAnswer)
+          ? rawAnswer.map((a: string) => String(a).trim())
+          : String(rawAnswer).split('\n').map((a: string) => a.trim());
+
+        // Find which options match the correct answers
+        defaultAnswers = (question.options || []).filter(option =>
+          correctAnswers.some((ans: string) =>
+            option.trim() === ans ||
+            ans.includes(option.trim()) ||
+            option.trim().includes(ans)
+          )
+        );
+      }
+
       return {
         ...prev,
         [questionIndex]: {
