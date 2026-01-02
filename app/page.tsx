@@ -20,7 +20,7 @@ interface AnalysisResult {
 
 interface CorrectionState {
   [questionIndex: number]: {
-    selectedAnswers: string[];
+    selectedIndices: number[];  // Changed from string[] to number[] for reliable comparison
     editedExplanation: string;
     isEditing: boolean;
     isSaved: boolean;
@@ -41,19 +41,27 @@ export default function Home() {
     setCorrections({});
   };
 
-  const handleOptionClick = (questionIndex: number, option: string) => {
+  const handleOptionClick = (questionIndex: number, optionIndex: number) => {
     if (!corrections[questionIndex]?.isEditing) return;
+
     setCorrections(prev => {
-      const currentAnswers = prev[questionIndex]?.selectedAnswers || [];
-      const isSelected = currentAnswers.includes(option);
-      const newAnswers = isSelected
-        ? currentAnswers.filter(a => a !== option)
-        : [...currentAnswers, option];
+      const currentState = prev[questionIndex] || {
+        selectedIndices: [],
+        editedExplanation: '',
+        isEditing: true,
+        isSaved: false,
+      };
+      const currentIndices = currentState.selectedIndices || [];
+      const isSelected = currentIndices.includes(optionIndex);
+      const newIndices = isSelected
+        ? currentIndices.filter(i => i !== optionIndex)
+        : [...currentIndices, optionIndex];
+
       return {
         ...prev,
         [questionIndex]: {
-          ...prev[questionIndex],
-          selectedAnswers: newAnswers,
+          ...currentState,
+          selectedIndices: newIndices,
         }
       };
     });
@@ -61,30 +69,33 @@ export default function Home() {
 
   const toggleEdit = (questionIndex: number, question: Question) => {
     setCorrections(prev => {
-      const existingAnswers = prev[questionIndex]?.selectedAnswers;
+      const existingIndices = prev[questionIndex]?.selectedIndices;
 
       // Better initialization logic matching the rendering logic
-      let defaultAnswers: string[] = [];
-      if (!existingAnswers) {
+      let defaultIndices: number[] = [];
+      if (!existingIndices) {
         const rawAnswer = question.correctAnswer || '';
         const correctAnswers = Array.isArray(rawAnswer)
           ? rawAnswer.map((a: string) => String(a).trim())
           : String(rawAnswer).split('\n').map((a: string) => a.trim());
 
-        // Find which options match the correct answers
-        defaultAnswers = (question.options || []).filter(option =>
-          correctAnswers.some((ans: string) =>
+        // Find which option indices match the correct answers
+        (question.options || []).forEach((option, idx) => {
+          const isCorrect = correctAnswers.some((ans: string) =>
             option.trim() === ans ||
             ans.includes(option.trim()) ||
             option.trim().includes(ans)
-          )
-        );
+          );
+          if (isCorrect) {
+            defaultIndices.push(idx);
+          }
+        });
       }
 
       return {
         ...prev,
         [questionIndex]: {
-          selectedAnswers: existingAnswers || defaultAnswers,
+          selectedIndices: existingIndices || defaultIndices,
           editedExplanation: prev[questionIndex]?.editedExplanation || question.explanation,
           isEditing: !prev[questionIndex]?.isEditing,
           isSaved: false,
@@ -106,7 +117,10 @@ export default function Home() {
 
   const submitCorrection = async (questionIndex: number, question: Question) => {
     const correction = corrections[questionIndex];
-    if (!correction?.selectedAnswers || correction.selectedAnswers.length === 0) return;
+    if (!correction?.selectedIndices || correction.selectedIndices.length === 0) return;
+
+    // Convert indices back to option strings for the API
+    const selectedAnswers = correction.selectedIndices.map(idx => question.options[idx]);
 
     try {
       const response = await fetch('/api/corrections', {
@@ -116,7 +130,7 @@ export default function Home() {
           question: question.question,
           options: question.options,
           aiAnswer: question.correctAnswer,
-          userCorrectAnswer: correction.selectedAnswers,
+          userCorrectAnswer: selectedAnswers,
           aiExplanation: question.explanation,
           userExplanation: correction.editedExplanation,
         }),
@@ -241,7 +255,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg sm:text-x text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-              過去問の画像をアップロードすると、AIが即座に正確な解答と詳しい解説を提供します。※1問ずつアップロードしてください。
+              画像をアップロードすると、AIが即座に正確な解答と詳しい解説を提供します。※画像を1枚ずつアップロードしてください。
             </p>
           </div>
         </div>
@@ -346,7 +360,7 @@ export default function Home() {
                       {(q.options || []).map((option: string, index: number) => {
                         // Check if in correction mode
                         const isEditing = corrections[qIndex]?.isEditing;
-                        const userSelectedAnswers = corrections[qIndex]?.selectedAnswers || [];
+                        const userSelectedIndices = corrections[qIndex]?.selectedIndices || [];
 
                         // Handle multiple correct answers (string or array)
                         const rawAnswer = q.correctAnswer || '';
@@ -362,9 +376,9 @@ export default function Home() {
                         // Determine highlight state
                         let isHighlighted = false;
                         if (isEditing) {
-                          isHighlighted = userSelectedAnswers.includes(option);
+                          isHighlighted = userSelectedIndices.includes(index);
                         } else if (corrections[qIndex]?.isSaved) {
-                          isHighlighted = (corrections[qIndex]?.selectedAnswers || []).includes(option);
+                          isHighlighted = (corrections[qIndex]?.selectedIndices || []).includes(index);
                         } else {
                           isHighlighted = isAICorrect;
                         }
@@ -372,7 +386,7 @@ export default function Home() {
                         return (
                           <div
                             key={index}
-                            onClick={() => handleOptionClick(qIndex, option)}
+                            onClick={() => handleOptionClick(qIndex, index)}
                             className={`p-4 rounded-lg border transition-all ${isEditing ? 'cursor-pointer hover:border-indigo-400' : ''
                               } ${isHighlighted
                                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
