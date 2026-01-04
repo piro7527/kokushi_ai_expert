@@ -178,7 +178,7 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error("Error analyzing image:", error);
         return NextResponse.json(
-            { error: "Failed to analyze image" },
+            { error: `Failed to analyze image: ${error instanceof Error ? error.message : String(error)}` },
             { status: 500 }
         );
     }
