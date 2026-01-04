@@ -1,54 +1,38 @@
+
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const fs = require('fs');
-const path = require('path');
 
 async function listModels() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        console.error("GEMINI_API_KEY is not set");
+        return;
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
     try {
-        const envPath = path.resolve(__dirname, '.env.local');
-        if (!fs.existsSync(envPath)) {
-            console.error(".env.local not found");
-            return;
-        }
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        const match = envContent.match(/GEMINI_API_KEY=(.*)/);
-        const apiKey = match ? match[1].trim() : null;
+        // Note: listModels is on the genAI instance or model manager depending on SDK version
+        // In newer SDKs:
+        // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // But we want to list. 
+        // Actually, looking at docs, there isn't a direct listModels on the main class in some versions,
+        // but let's try the common pattern or just try to instantiate 001.
 
-        if (!apiKey) {
-            console.error("API Key not found in .env.local");
-            return;
-        }
-
-        console.log("Using Key ending in:", apiKey.slice(-4));
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-
-        const candidates = [
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-001",
-            "gemini-1.5-flash-002",
-            "gemini-1.5-flash-latest",
-            "gemini-1.5-pro",
-            "gemini-1.5-pro-001",
-            "gemini-1.5-pro-002",
-            "gemini-1.5-pro-latest",
-            "gemini-pro"
-        ];
-
-        console.log("Testing models...");
-        for (const name of candidates) {
-            process.stdout.write(`Checking ${name}... `);
-            try {
-                const m = genAI.getGenerativeModel({ model: name });
-                // Simple text generation to verify access
-                await m.generateContent("Hello");
-                console.log(`OK`);
-            } catch (e) {
-                console.log(`FAIL: ${e.message.split('\n')[0]}`);
-            }
-        }
-
+        // Let's try to just output what we can find or test a specific model
+        console.log("Testing gemini-1.5-flash-001...");
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+        const result = await model.generateContent("Hello");
+        console.log("gemini-1.5-flash-001 is working:", result.response.text());
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Error:", error.message);
+    }
+
+    try {
+        console.log("Testing gemini-2.0-flash-exp...");
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const result = await model.generateContent("Hello");
+        console.log("gemini-2.0-flash-exp is working:", result.response.text());
+    } catch (error) {
+        console.error("Error:", error.message);
     }
 }
 
