@@ -74,8 +74,8 @@ export async function POST(request: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Using gemini-1.5-flash-latest as standard names are returning 404
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        // Using gemini-2.0-flash as it is available and has better quotas than 2.5-flash
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         // Extract MIME type and base64 data
         const matches = image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
