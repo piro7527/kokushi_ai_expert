@@ -74,8 +74,8 @@ export async function POST(request: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Using gemini-2.5-flash (2.0-flash hit quota limit)
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        // Using gemini-1.5-flash for better free tier limits (15 RPM, 1500 RPD) vs 2.5-flash's 20 RPD
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         // Extract MIME type and base64 data
         const matches = image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
