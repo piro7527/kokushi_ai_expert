@@ -236,7 +236,7 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
-      setError("An unexpected error occurred");
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setAnalyzing(false);
     }
   };
