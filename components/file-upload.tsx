@@ -30,7 +30,16 @@ export function FileUpload({ onFileSelect, isLoading = false }: FileUploadProps)
         e.stopPropagation();
         setDragActive(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFile(e.dataTransfer.files[0]);
+            const file = e.dataTransfer.files[0];
+            if (!file.type.startsWith('image/')) {
+                alert('画像ファイルのみアップロード可能です。');
+                return;
+            }
+            if (file.type === 'image/heic' || file.name.toLowerCase().endsWith('.heic')) {
+                alert('HEIC形式は現在サポートされていません。JPGまたはPNGに変換してアップロードしてください。');
+                return;
+            }
+            handleFile(file);
         }
     };
 

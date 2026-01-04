@@ -3,14 +3,7 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-// Vercel serverless function config - increase body size limit
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '10mb',
-        },
-    },
-};
+
 
 // Next.js App Router config
 export const maxDuration = 60; // seconds
@@ -111,12 +104,14 @@ export async function POST(request: Request) {
         "questionNumber": "画像に記載されている問題番号（例: 89, 90など）",
         "question": "問題文のテキスト",
         "options": ["選択肢1", "選択肢2", ...],
-        "correctAnswer": "正解の選択肢のテキスト",
+        "correctAnswer": ["正解の選択肢のテキスト1", "正解の選択肢のテキスト2"],
         "explanation": "なぜその答えが正しいのか、他の選択肢がなぜ誤りなのかの詳細な解説"
       }
       
-      重要: questionNumberは画像に記載されている実際の問題番号を正確に抽出してください。
-      複数の問題がある場合は配列で返してください。
+      重要: 
+      1. questionNumberは画像に記載されている実際の問題番号を正確に抽出してください。
+      2. correctAnswerは必ず配列（Array）形式で返してください。正解が1つの場合も ["正解"] のように配列にしてください。
+      3. 複数の問題がある場合は配列で返してください。
       ${fewShotExamples}
     `;
 

@@ -77,7 +77,7 @@ export default function Home() {
         const rawAnswer = question.correctAnswer || '';
         const correctAnswers = Array.isArray(rawAnswer)
           ? rawAnswer.map((a: string) => String(a).trim())
-          : String(rawAnswer).split('\n').map((a: string) => a.trim());
+          : String(rawAnswer).split(/[\n,、]/).map((a: string) => a.trim());
 
         // Find which option indices match the correct answers
         (question.options || []).forEach((option, idx) => {
@@ -158,7 +158,13 @@ export default function Home() {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
+      // Timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Image processing timed out. Please try a different image.'));
+      }, 10000);
+
       img.onload = () => {
+        clearTimeout(timeoutId);
         let { width, height } = img;
 
         // Scale down if larger than maxWidth
@@ -176,14 +182,21 @@ export default function Home() {
         resolve(compressedBase64);
       };
 
-      img.onerror = () => reject(new Error('Failed to load image'));
+      img.onerror = (e) => {
+        clearTimeout(timeoutId);
+        console.error('Image load error:', e);
+        reject(new Error('Failed to load image. The format might be unsupported.'));
+      };
 
       // Read file as data URL
       const reader = new FileReader();
       reader.onloadend = () => {
         img.src = reader.result as string;
       };
-      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.onerror = () => {
+        clearTimeout(timeoutId);
+        reject(new Error('Failed to read file'));
+      };
       reader.readAsDataURL(file);
     });
   };
@@ -366,7 +379,7 @@ export default function Home() {
                         const rawAnswer = q.correctAnswer || '';
                         const correctAnswers = Array.isArray(rawAnswer)
                           ? rawAnswer.map((a: string) => String(a).trim())
-                          : String(rawAnswer).split('\n').map((a: string) => a.trim());
+                          : String(rawAnswer).split(/[\n,、]/).map((a: string) => a.trim());
                         const isAICorrect = correctAnswers.some((ans: string) =>
                           option.trim() === ans ||
                           ans.includes(option.trim()) ||
