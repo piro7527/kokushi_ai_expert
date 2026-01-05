@@ -201,6 +201,81 @@ export default function Home() {
     });
   };
 
+  // Process file to handle HEIC and PDF conversions
+  const processFile = async (file: File): Promise<File> => {
+    // 1. HEIC Handling
+    const isHeic = file.name.toLowerCase().endsWith('.heic') ||
+      file.name.toLowerCase().endsWith('.heif') ||
+      file.type === 'image/heic' ||
+      file.type === 'image/heif';
+
+    if (isHeic) {
+      try {
+        console.log('Processing HEIC file:', file.name, file.type, file.size);
+
+        // Dynamic import of heic2any
+        const heic2any = (await import('heic2any')).default;
+
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.85
+        });
+
+        const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+        console.log('HEIC conversion successful, output size:', blob.size);
+        return new File([blob], file.name.replace(/\.hei[cf]$/i, '.jpg'), { type: 'image/jpeg' });
+      } catch (error: any) {
+        console.error('HEIC conversion failed:', error);
+        const errorMessage = error?.message || 'Unknown error';
+        throw new Error(`HEICファイルの変換に失敗しました: ${errorMessage}`);
+      }
+    }
+
+    // 2. PDF Handling
+    if (file.type === 'application/pdf') {
+      try {
+        const pdfjs = await import('pdfjs-dist');
+        // Set worker source - using CDN for simplicity and reliability in Next.js client component
+        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1); // Get first page
+
+        const viewport = page.getViewport({ scale: 2.0 }); // Scale up for better quality
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        if (!context) throw new Error('Canvas context could not be created');
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        } as any).promise;
+
+        return new Promise((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name.replace(/\.pdf$/i, '.jpg'), { type: 'image/jpeg' }));
+            } else {
+              reject(new Error('PDF conversion to image failed'));
+            }
+          }, 'image/jpeg', 0.8);
+        });
+      } catch (error) {
+        console.error('PDF conversion failed:', error);
+        throw new Error('PDFファイルの読み込みに失敗しました。');
+      }
+    }
+
+    return file;
+  };
+
   const handleAnalyze = async () => {
     if (!file) return;
 
@@ -208,8 +283,11 @@ export default function Home() {
     setError(null);
 
     try {
+      // Pre-process file (HEIC -> JPG, PDF -> JPG)
+      const processedFile = await processFile(file);
+
       // Compress image before sending to avoid Vercel's 4.5MB limit
-      const base64String = await compressImage(file, 1024, 0.7);
+      const base64String = await compressImage(processedFile, 1024, 0.7);
       console.log('Compressed image size:', Math.round(base64String.length / 1024), 'KB');
 
       try {

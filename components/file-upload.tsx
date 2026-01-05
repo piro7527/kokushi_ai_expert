@@ -31,12 +31,13 @@ export function FileUpload({ onFileSelect, isLoading = false }: FileUploadProps)
         setDragActive(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             const file = e.dataTransfer.files[0];
-            if (!file.type.startsWith('image/')) {
-                alert('画像ファイルのみアップロード可能です。');
-                return;
-            }
-            if (file.type === 'image/heic' || file.name.toLowerCase().endsWith('.heic')) {
-                alert('HEIC形式は現在サポートされていません。JPGまたはPNGに変換してアップロードしてください。');
+            console.log('Dropped file:', file.name, file.type, file.size); // Debug log
+            const isImage = file.type.startsWith('image/');
+            const isHeic = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic';
+            const isPdf = file.type === 'application/pdf';
+
+            if (!isImage && !isHeic && !isPdf) {
+                alert(`サポートされていない形式です。\nName: ${file.name}\nType: ${file.type}`);
                 return;
             }
             handleFile(file);
@@ -47,12 +48,13 @@ export function FileUpload({ onFileSelect, isLoading = false }: FileUploadProps)
         e.preventDefault();
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (!file.type.startsWith('image/')) {
-                alert('画像ファイルのみアップロード可能です。');
-                return;
-            }
-            if (file.type === 'image/heic' || file.name.toLowerCase().endsWith('.heic')) {
-                alert('HEIC形式は現在サポートされていません。JPGまたはPNGに変換してアップロードしてください。');
+            console.log('Selected file:', file.name, file.type, file.size); // Debug log
+            const isImage = file.type.startsWith('image/');
+            const isHeic = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic';
+            const isPdf = file.type === 'application/pdf';
+
+            if (!isImage && !isHeic && !isPdf) {
+                alert(`サポートされていない形式です。\nName: ${file.name}\nType: ${file.type}`);
                 return;
             }
             handleFile(file);
@@ -116,7 +118,7 @@ export function FileUpload({ onFileSelect, isLoading = false }: FileUploadProps)
                             ref={inputRef}
                             type="file"
                             className="hidden"
-                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            accept="image/jpeg,image/png,image/gif,image/webp,image/heic,.heic,application/pdf"
                             onChange={handleChange}
                         />
 
@@ -136,7 +138,7 @@ export function FileUpload({ onFileSelect, isLoading = false }: FileUploadProps)
                                 </p>
                             </div>
                             <p className="text-xs text-zinc-500">
-                                画像のみ対応（JPG, PNG, GIF, WebP）
+                                画像（JPG, PNG, GIF, WebP, HEIC）またはPDF
                             </p>
                             <Button
                                 onClick={onButtonClick}
