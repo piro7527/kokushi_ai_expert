@@ -74,8 +74,8 @@ export async function POST(request: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Using gemini-2.5-pro for highest accuracy in exam question analysis
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        // Using gemini-pro-latest for highest accuracy (free tier compatible)
+        const model = genAI.getGenerativeModel({ model: "gemini-pro-latest" });
 
         // Extract MIME type and base64 data
         const matches = image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
