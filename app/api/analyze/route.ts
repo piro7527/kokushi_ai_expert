@@ -132,10 +132,56 @@ export async function POST(request: Request) {
         console.log("Raw AI Response:", text);
 
         // Clean up markdown code blocks if present to ensure valid JSON parsing
-        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        // Handle various formats: ```json, ```JSON, ``` json, etc.
+        text = text.replace(/```\s*json\s*/gi, "").replace(/```/g, "").trim();
+
+        // Fix invalid escape sequences in JSON (e.g., LaTeX commands like \text, \times)
+        function fixInvalidEscapes(str: string): string {
+            // Valid JSON escape sequences: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+            // We need to escape backslashes that are NOT part of these valid sequences
+            return str.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+        }
+
+        // Try to extract JSON from the response if it contains other text
+        function extractJSON(str: string): string {
+            // Try to find JSON array first (prefer arrays for multiple questions)
+            const arrayStart = str.indexOf('[');
+            const arrayEnd = str.lastIndexOf(']');
+            if (arrayStart !== -1 && arrayEnd > arrayStart) {
+                const candidate = str.substring(arrayStart, arrayEnd + 1);
+                try {
+                    // Test parse with escape fix
+                    JSON.parse(fixInvalidEscapes(candidate));
+                    return candidate;
+                } catch {
+                    // Continue to object match
+                }
+            }
+
+            // Try to find JSON object
+            const objectStart = str.indexOf('{');
+            const objectEnd = str.lastIndexOf('}');
+            if (objectStart !== -1 && objectEnd > objectStart) {
+                const candidate = str.substring(objectStart, objectEnd + 1);
+                try {
+                    JSON.parse(fixInvalidEscapes(candidate));
+                    return candidate;
+                } catch {
+                    // Return original
+                }
+            }
+
+            return str;
+        }
+
+        // Extract JSON from the response
+        let jsonText = extractJSON(text);
+
+        jsonText = fixInvalidEscapes(jsonText);
+        console.log("Extracted JSON:", jsonText.substring(0, 500) + (jsonText.length > 500 ? "..." : ""));
 
         try {
-            let data = JSON.parse(text);
+            let data = JSON.parse(jsonText);
             // Debug: Log parsed data
             console.log("Parsed Data:", JSON.stringify(data, null, 2));
 
@@ -168,9 +214,15 @@ export async function POST(request: Request) {
 
             return NextResponse.json({ questions });
         } catch (parseError) {
-            console.error("JSON Parse Error:", parseError, "Raw text:", text);
+            console.error("JSON Parse Error:", parseError);
+            console.error("Original text:", text);
+            console.error("Extracted JSON attempt:", jsonText);
             return NextResponse.json(
-                { error: "Failed to parse AI response", rawText: text },
+                {
+                    error: "Failed to parse AI response",
+                    rawText: text.substring(0, 1000),
+                    hint: "AIの応答がJSON形式ではありませんでした。もう一度お試しください。"
+                },
                 { status: 500 }
             );
         }
