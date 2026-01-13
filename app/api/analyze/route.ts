@@ -74,8 +74,8 @@ export async function POST(request: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Using gemini-flash-latest as it is the only alias confirmed to work with current free tier
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        // Using gemini-1.5-pro-latest for highest accuracy in exam question analysis
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
 
         // Extract MIME type and base64 data
         const matches = image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
